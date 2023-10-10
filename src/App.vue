@@ -1,6 +1,5 @@
 <template>
     <main class="age-calculator">
-        <h1 class="hidden" aria-label="Birthday Calendar">Birthday Calculator</h1>
         <div class="container">
             <section class="age-calculator__input-values">
                 <div class="age-calculator__input-group">
