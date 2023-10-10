@@ -46,7 +46,7 @@
             </section>
 
             <section class="age-calculator-action">
-                <button class="button" @click="validateInputFields">
+                <button class="button" @click="validateInputFields" aria-label="Calculate Age">
                     <IconArrow />
                 </button>
             </section>
