@@ -56,6 +56,10 @@ body,
     -moz-osx-font-smoothing: grayscale;
 }
 
+.hidden {
+    display: none;
+}
+
 /* ----- Vue Transitions ----- */
 .fade-enter-active,
 .fade-leave-active {
@@ -65,4 +69,27 @@ body,
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+.slide-down-enter-active,
+.slide-down-leave-active {
+    transition: all 0.5s ease;
+    transform: translateY(1rem);
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+    opacity: 0;
+    transform: translateY(0);
+}
+
+.count-up-enter-active,
+.count-up-leave-active {
+    transition: all 20ms;
+}
+
+.count-up-enter,
+.count-up-leave-to {
+    opacity: 0;
+    transform: translateY(20px);
 }

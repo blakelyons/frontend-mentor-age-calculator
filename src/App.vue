@@ -1,5 +1,6 @@
 <template>
     <main class="age-calculator">
+        <h1 class="hidden" aria-label="Birthday Calendar">Birthday Calculator</h1>
         <div class="container">
             <section class="age-calculator__input-values">
                 <div class="age-calculator__input-group">
@@ -7,13 +8,13 @@
                         type="text"
                         id="day"
                         name="day"
-                        v-model="day.inputValue"
-                        :valid="day.valid"
-                        :errorMessage="day.message"
+                        v-model="day"
+                        :valid="dayValid.valid"
+                        :errorMessage="dayValid.message"
                         label="Day"
                         placeholder="DD"
                         :maxLength="2"
-                        @validate-change="validateInputFields"
+                        :shouldFocus="focusDay"
                     />
                 </div>
                 <div class="age-calculator__input-group">
@@ -21,13 +22,12 @@
                         type="text"
                         id="month"
                         name="month"
-                        v-model="month.inputValue"
-                        :valid="month.valid"
-                        :errorMessage="month.message"
+                        v-model="month"
+                        :valid="monthValid.valid"
+                        :errorMessage="monthValid.message"
                         label="Month"
                         placeholder="MM"
                         :maxLength="2"
-                        @validate-change="validateInputFields"
                     />
                 </div>
                 <div class="age-calculator__input-group">
@@ -35,196 +35,198 @@
                         type="text"
                         id="year"
                         name="year"
-                        v-model="year.inputValue"
-                        :valid="year.valid"
-                        :errorMessage="year.message"
+                        v-model="year"
+                        :valid="yearValid.valid"
+                        :errorMessage="yearValid.message"
                         label="Year"
                         placeholder="YYYY"
                         :maxLength="4"
-                        @validate-change="validateInputFields"
                     />
                 </div>
             </section>
 
             <section class="age-calculator-action">
-                <button class="button" @click="calculateAge">
+                <button class="button" @click="validateInputFields">
                     <IconArrow />
                 </button>
             </section>
 
             <section class="calculated-age">
                 <div class="years">
-                    <span class="years__value">{{ years ? years : "--" }}</span> years
+                    <transition name="count-up">
+                        <div class="data-value" key="years">
+                            <span class="years__value" v-if="years !== null && dayValid.valid && monthValid.valid && yearValid.valid">
+                                {{ years < 10 && years > 0 ? "0" + years : years }}
+                            </span>
+                            <span v-else> -- </span>
+                        </div>
+                    </transition>
+                    <div class="data-label">years</div>
                 </div>
                 <div class="months">
-                    <span class="months__value">{{ months === null ? `--` : months }}</span> months
+                    <transition name="count-up">
+                        <div class="data-value" key="months">
+                            <span class="months__value" v-if="months !== null && dayValid.valid && monthValid.valid && yearValid.valid">
+                                {{ months < 10 && months > 0 ? "0" + months : months }}
+                            </span>
+                            <span v-else> -- </span>
+                        </div>
+                    </transition>
+                    <div class="data-label">months</div>
                 </div>
                 <div class="days">
-                    <span class="days__value">{{ days ? days : "--" }}</span> days
+                    <transition name="count-up">
+                        <div class="data-value" key="days">
+                            <span class="days__value" v-if="days !== null && dayValid.valid && monthValid.valid && yearValid.valid">
+                                {{ days < 10 && days > 0 ? "0" + days : days }}
+                            </span>
+                            <span v-else> -- </span>
+                        </div>
+                    </transition>
+                    <div class="data-label">days</div>
                 </div>
             </section>
         </div>
     </main>
 </template>
 <script setup>
-import {ref, watch} from "vue";
+import {ref, onMounted} from "vue";
 import InputField from "./components/InputField.vue";
 import IconArrow from "./components/icons/icon-arrow.vue";
 
-// Values for Calculations
 const today = new Date();
-const valid = ref(false);
 
-const years = ref(0);
+const valid = ref(false);
+const loading = ref(false);
+
+const years = ref(null);
 const months = ref(null);
-const days = ref(0);
+const days = ref(null);
 
 const calculated = ref(false);
 
-// Error Messages
-const day = ref({
-    inputValue: "",
-    message: "This field is required",
-    valid: true,
-});
+const focusDay = ref(false);
 
-const month = ref({
-    inputValue: "",
-    message: "This field is required",
-    valid: true,
-});
+const day = ref("");
+const month = ref("");
+const year = ref("");
 
-const year = ref({
-    inputValue: "",
-    message: "This field is required",
-    valid: true,
-});
+const dayValid = ref({message: "This field is required", valid: true});
+const monthValid = ref({message: "This field is required", valid: true});
+const yearValid = ref({message: "This field is required", valid: true});
 
-const validateInputFields = async () => {
-    await validateMonth();
-    validateDay();
-    validateYear();
+const validateField = async (field, error, validator) => {
+    if (field.value === "") {
+        valid.value = false;
+        error.value.valid = false;
+        error.value.message = "This field is required";
+        return;
+    }
 
-    // Check if all Fields are Valid
-    if (day.value.valid && month.value.valid && year.value.valid) {
+    const validationResult = await validator();
+
+    if (validationResult.valid) {
         valid.value = true;
+        error.value.valid = true;
     } else {
         valid.value = false;
+        error.value.valid = false;
+        error.value.message = validationResult.message;
     }
 };
 
-const validateDay = () => {
-    // Check if Day is Empty
-    if (day.value.inputValue === "") {
-        day.value.valid = false;
-        day.value.message = "This field is required";
-        return;
-    } else if (day.value.inputValue < 1 || day.value.inputValue > 31) {
-        day.value.valid = false;
-        day.value.message = "Must be a valid month";
-        return;
-    } else if (day.value.inputValue !== "" && month.value.inputValue !== "") {
-        // Check if Day is valid for Month
-        const daysInMonth = new Date(year.value.inputValue, month.value.inputValue, 0).getDate();
-
-        console.log(`Days in Month: ${daysInMonth}`);
-
-        if (day.value.inputValue > daysInMonth) {
-            day.value.valid = false;
-            day.value.message = "Must be a valid day";
-            return;
-        } else {
-            day.value.valid = true;
-            return;
-        }
-    } else {
-        day.value.valid = true;
+const validateDay = async () => {
+    if (day.value < 1 || day.value > 31) {
+        return {valid: false, message: "Must be a valid day"};
     }
+
+    const daysInMonth = new Date(year.value, month.value, 0).getDate();
+
+    if (day.value > daysInMonth) {
+        return {valid: false, message: "Must be a valid day"};
+    }
+
+    return {valid: true};
 };
 
 const validateMonth = async () => {
-    // Check if Month is Empty
-    if (month.value.inputValue === "") {
-        month.value.valid = false;
-        month.value.message = "This field is required";
-        return;
-    } else if (month.value.inputValue < 1 || month.value.inputValue > 12) {
-        month.value.valid = false;
-        month.value.message = "Must be a valid month";
-        return;
-    } else {
-        month.value.valid = true;
-        return;
+    if (month.value < 1 || month.value > 12) {
+        return {valid: false, message: "Must be a valid month"};
+    }
+
+    return {valid: true};
+};
+
+const validateYear = async () => {
+    if (year.value > today.getFullYear()) {
+        return {valid: false, message: "Must be a valid year"};
+    } else if (year.value < 1900) {
+        return {valid: false, message: "Year must be after 1900"};
+    }
+
+    return {valid: true};
+};
+
+const validateInputFields = async () => {
+    await validateField(day, dayValid, validateDay);
+    await validateField(month, monthValid, validateMonth);
+    await validateField(year, yearValid, validateYear);
+
+    if (valid.value) {
+        calculateAge();
     }
 };
 
-const validateYear = () => {
-    // Check if Year is Empty and if it is a valid year that is in the past
-    if (year.value.inputValue === "") {
-        year.value.valid = false;
-        year.value.message = "This field is required";
-        return;
-    } else if (year.value.inputValue > today.getFullYear()) {
-        year.value.valid = false;
-        year.value.message = "Must be a valid year";
-        return;
-    } else {
-        year.value.valid = true;
-        return;
-    }
+const resetCalculator = () => {
+    days.value = null;
+    months.value = null;
+    years.value = null;
 };
 
-const calculateAge = async () => {
-    await validateInputFields();
+const countUp = (targetValue, property) => {
+    const startValue = 0;
+    const steps = 60;
+    const stepValue = (targetValue - startValue) / steps;
+    let currentValue = startValue;
+
+    const update = () => {
+        if (currentValue <= targetValue) {
+            property.value = Math.floor(currentValue);
+            currentValue += stepValue;
+            requestAnimationFrame(update);
+        }
+    };
+
+    update();
+};
+
+const calculateAge = () => {
+    loading.value = true;
+
+    resetCalculator();
 
     if (!valid.value) {
-        console.log("Not Valid");
         return;
     }
 
-    // Calculate the number of years.value, months, and days.value, based on the inputted date
-    const birthDate = new Date(`${year.value.inputValue}-${month.value.inputValue}-${day.value.inputValue}`);
-    years.value = today.getFullYear() - birthDate.getFullYear();
-    months.value = today.getMonth() - birthDate.getMonth();
-    days.value = today.getDate() - birthDate.getDate();
+    const birthDate = new Date(`${month.value}-${day.value}-${year.value}`);
 
-    console.log(`Years: ${years.value}`);
+    countUp(today.getFullYear() - birthDate.getFullYear(), years);
+    countUp(today.getMonth() - birthDate.getMonth(), months);
 
-    // If the current month is less than the birth month, subtract a year
-    if (months.value < 0 || (months.value === 0 && today.getDate() < birthDate.getDate())) {
-        years.value--;
-    }
+    let daysDiff = today.getDate() - birthDate.getDate();
 
-    // If the current month is less than the birth month, add 12 to the months
-    if (months.value < 0) {
-        months.value += 12;
-        console.log(`Months: ${months.value}`);
-    }
-
-    // If the current day is less than the birth day, subtract a month
-    if (days.value < 0) {
+    if (daysDiff < 0) {
         months.value--;
+        daysDiff += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
     }
 
-    // If the current day is less than the birth day, add the number of days in the birth month to the days.value
-    if (days.value < 0) {
-        const daysInMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-        days.value += daysInMonth;
-    }
-
-    console.log(`Years: ${years.value}`);
-
-    // Display the age
-    console.log(`You are ${years.value} years, ${months.value} months, and ${days.value} days old.`);
-
-    console.log("Calculate Age");
+    countUp(daysDiff, days);
 
     calculated.value = true;
 };
 
-// Watch Day for Changes
-watch(day, (newValue) => {
-    console.log("Day Changed", newValue);
-    validateInputFields();
+onMounted(() => {
+    focusDay.value = true;
 });
 </script>
